@@ -6,12 +6,12 @@
 # Thus we removed it. Clang ARM users can add -march=armv8-a+crypto to enable
 # ARM NEON crypto.
 CXX=c++
-CXXFLAGS=-O2 -std=c++11 -Wno-logical-op-parentheses -Wno-switch -Wno-dangling-else
+CXXFLAGS=-O2 -std=c++11 -Wno-switch -Wno-dangling-else
 LIBFLAGS=-fPIC
 DEFINES=-D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -DRAR_SMP
 STRIP=strip
 AR=ar
-LDFLAGS=-pthread
+LDFLAGS=-pthread -lseccomp
 DESTDIR=/usr
 
 ##########################
@@ -48,21 +48,17 @@ clean:
 # 'make -Jn' builds.
 
 unrar:	$(OBJECTS) $(UNRAR_OBJ)
-	@rm -f unrar
 	$(LINK) -o unrar $(LDFLAGS) $(OBJECTS) $(UNRAR_OBJ) $(LIBS)	
-	$(STRIP) unrar
 
 sfx:	WHAT=SFX_MODULE
 sfx:	$(OBJECTS)
 	@rm -f default.sfx
 	$(LINK) -o default.sfx $(LDFLAGS) $(OBJECTS)
-	$(STRIP) default.sfx
 
 lib:	WHAT=RARDLL
 lib:	CXXFLAGS+=$(LIBFLAGS)
 lib:	$(OBJECTS) $(LIB_OBJ)
-	@rm -f libunrar.*
-	$(LINK) -shared -o libunrar.so $(LDFLAGS) $(OBJECTS) $(LIB_OBJ)
+	$(LINK) -shared -o libunrar.so $(LDFLAGS) $(OBJECTS) $(LIB_OBJ) $(LIBS)
 	$(AR) rcs libunrar.a $(OBJECTS) $(LIB_OBJ)
 
 install-unrar:
