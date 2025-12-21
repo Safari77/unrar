@@ -2,6 +2,7 @@
 
 #include "cmdfilter.cpp"
 #include "cmdmix.cpp"
+#include "cmd_security.cpp"
 
 CommandData::CommandData()
 {
@@ -297,6 +298,9 @@ void CommandData::ProcessSwitch(const wchar *Switch)
 {
 
   if (LargePageAlloc::ProcessSwitch(this,Switch))
+    return;
+
+  if (SecurityPatches::ProcessSwitch(this, Switch))
     return;
 
   switch(toupperw(Switch[0]))
@@ -653,7 +657,7 @@ void CommandData::ProcessSwitch(const wchar *Switch)
             // 2023.07.22: For 4 GB and less we also check that it is power of 2,
             // so archives are compatible with RAR 5.0+.
             // We allow Size>PACK_MAX_DICT here, so we can use -md[x] to unpack
-            // archives created by future versions with higher PACK_MAX_DICTþ
+            // archives created by future versions with higher PACK_MAX_DICT
             uint Flags;
             if ((Size=Archive::GetWinSize(Size,Flags))==0 ||
                 Size<=0x100000000ULL && !IsPow2(Size))
