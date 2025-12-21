@@ -2,6 +2,7 @@
 #include <seccomp.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <time.h>
 #endif
 
 #include "rar.hpp"
@@ -12,6 +13,7 @@ int main(int argc, char *argv[])
 
 #ifdef _UNIX
   setlocale(LC_ALL,"");
+  tzset();
 #endif
 
   InitConsole();
