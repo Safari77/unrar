@@ -72,6 +72,7 @@ class File
     bool NewFile;
     bool AllowDelete;
     bool AllowExceptions;
+    bool SyncOnClose;
 #ifdef _WIN_ALL
     // uint CreateMode;
 #endif
@@ -99,6 +100,7 @@ class File
     void TCreate(const std::wstring &Name,uint Mode=FMF_UPDATE|FMF_SHAREREAD);
     bool WCreate(const std::wstring &Name,uint Mode=FMF_UPDATE|FMF_SHAREREAD);
     virtual bool Close(); // 'virtual' for MultiFile class.
+    void SetSync(bool Sync) { SyncOnClose=Sync; }
     bool Delete();
     bool Rename(const std::wstring &NewName);
     bool Write(const void *Data,size_t Size);
