@@ -62,7 +62,7 @@ void CommandData::OutHelp(RAR_EXIT ExitCode)
     MCHelpCmdP,MCHelpCmdT,MCHelpCmdV,MCHelpCmdX,MCHelpSw,MCHelpSwm,
     MCHelpSwAT,MCHelpSwAC,MCHelpSwAD,MCHelpSwAG,MCHelpSwAI,MCHelpSwAP,
     MCHelpSwCm,MCHelpSwCFGm,MCHelpSwCL,MCHelpSwCU,MCHelpSwDH,MCHelpSwEP,
-    MCHelpSwEP3,MCHelpSwEP4,MCHelpSwF,MCHelpSwIDP,MCHelpSwIERR,
+    MCHelpSwEP3,MCHelpSwEP4,MCHelpSwF,MCHelpSwFS,MCHelpSwIDP,MCHelpSwIERR,
     MCHelpSwINUL,MCHelpSwIOFF,MCHelpSwKB,MCHelpSwME,MCHelpSwMLP,
     MCHelpSwN,MCHelpSwNa,MCHelpSwNal,MCHelpSwO,MCHelpSwOC,MCHelpSwOL,
     MCHelpSwOM,MCHelpSwOP,MCHelpSwOR,MCHelpSwOW,MCHelpSwP,MCHelpSwR,

@@ -671,6 +671,7 @@ bool CmdExtract::ExtractCurrentFile(Archive &Arc,size_t HeaderSize,bool &Repeat)
       ExtrFile=LinksToDirs(DestFileName,Cmd->ExtrPath,LastCheckedSymlink);
 
     File CurFile;
+    CurFile.SetSync(Cmd->ForceSync);
 
     bool LinkEntry=Arc.FileHead.RedirType!=FSREDIR_NONE;
     if (LinkEntry && (Arc.FileHead.RedirType!=FSREDIR_FILECOPY))

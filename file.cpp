@@ -1,5 +1,9 @@
 #include "rar.hpp"
 
+#ifndef _WIN_ALL
+#include <unistd.h>
+#endif
+
 File::File()
 {
   hFile=FILE_BAD_HANDLE;
@@ -8,6 +12,7 @@ File::File()
   HandleType=FILE_HANDLENORMAL;
   LineInput=false;
   SkipClose=false;
+  SyncOnClose=false;
   ErrorType=FILE_SUCCESS;
   OpenShared=false;
   AllowDelete=true;
@@ -252,6 +257,19 @@ bool File::Close()
   {
     if (!SkipClose)
     {
+      if (SyncOnClose)
+      {
+#ifdef _WIN_ALL
+        FlushFileBuffers(hFile);
+#else
+#ifdef FILE_USE_OPEN
+        fsync(hFile);
+#else
+        fflush(hFile);
+        fsync(fileno(hFile));
+#endif
+#endif
+      }
 #ifdef _WIN_ALL
       // We use the standard system handle for stdout in Windows
       // and it must not be closed here.

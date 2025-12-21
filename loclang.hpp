@@ -87,6 +87,7 @@
 #define   MCHelpSwEP3        L"\n  ep3           Expand paths to full including the drive letter"
 #define   MCHelpSwEP4        L"\n  ep4<path>     Exclude the path prefix from names"
 #define   MCHelpSwF          L"\n  f             Freshen files"
+#define   MCHelpSwFS         L"\n  fs            Force fsync on close"
 #define   MCHelpSwHP         L"\n  hp[password]  Encrypt both file data and headers"
 #define   MCHelpSwHT         L"\n  ht[b|c]       Select hash type [BLAKE2,CRC32] for file checksum"
 #define   MCHelpSwIDP        L"\n  id[c,d,n,p,q] Display or disable messages"
