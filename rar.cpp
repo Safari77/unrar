@@ -1,52 +1,31 @@
-#ifdef __linux__
-#include <seccomp.h>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-#include <time.h>
-#endif
-
 #include "rar.hpp"
 
-#if !defined(RARDLL)
-int main(int argc, char *argv[])
-{
-
-#ifdef _UNIX
-  setlocale(LC_ALL,"");
-  tzset();
-#endif
-
-  InitConsole();
-  ErrHandler.SetSignalHandlers(true);
-
-#ifdef SFX_MODULE
-  std::wstring ModuleName;
-#ifdef _WIN_ALL
-  ModuleName=GetModuleFileStr();
-#else
-  CharToWide(argv[0],ModuleName);
-#endif
-#endif
-
-#ifdef _WIN_ALL
-  SetErrorMode(SEM_NOALIGNMENTFAULTEXCEPT|SEM_FAILCRITICALERRORS|SEM_NOOPENFILEERRORBOX);
-
-
-#endif
-
-#if defined(_WIN_ALL) && !defined(SFX_MODULE)
-  // Must be initialized, normal initialization can be skipped in case of
-  // exception.
-  POWER_MODE ShutdownOnClose=POWERMODE_KEEP;
-#endif
-
 #ifdef __linux__
-#warning compiling seccomp support
+#ifndef _GNU_SOURCE
+#  define _GNU_SOURCE
+#endif
+
+#warning compiling seccomp and landlock support
+
+#include <fcntl.h>
+#include <libgen.h>
+#include <linux/landlock.h>
+#include <seccomp.h>
+#include <set>
+#include <string>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <sys/prctl.h>
+#include <sys/syscall.h>
+#include <time.h>
+#include <unistd.h>
+
+static void setup_seccomp(void)
+{
   scmp_filter_ctx ctx;
   int rc = 0;
 
   ctx = seccomp_init(SCMP_ACT_KILL_PROCESS);
-  //ctx = seccomp_init(SCMP_ACT_LOG);
   if (ctx) {
     const int BAD_MODES = S_ISUID | S_ISGID;
 
@@ -147,16 +126,49 @@ rc |= seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOSYS), SCMP_SYS(clone3), 0);
     rc |= seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(ioctl), 1, SCMP_A1(SCMP_CMP_EQ, FIONSPACE));
 #endif
 
-    //mprintf(L"rc=%d Adding seccomp rules... ", rc);
-    if (seccomp_load(ctx) == 0) {
-      //mprintf(L"OK.\n");
-    } else {
-      //mprintf(L"FAIL.\n");
+    int ret = seccomp_load(ctx);
+    if (ret != 0) {
+      fprintf(stderr, "seccomp_load failed with error %d\n", ret);
+      exit(RARX_FATAL);
     }
     seccomp_release(ctx);
   } else {
-    mprintf(L"seccomp failed\n");
+    fprintf(stderr, "seccomp_init failed: %s\n", strerror(errno));
+    exit(RARX_FATAL);
   }
+}
+#endif
+
+#if !defined(RARDLL)
+int main(int argc, char *argv[])
+{
+#ifdef _UNIX
+  setlocale(LC_ALL,"");
+  tzset();
+#endif
+
+  InitConsole();
+  ErrHandler.SetSignalHandlers(true);
+
+#ifdef SFX_MODULE
+  std::wstring ModuleName;
+#ifdef _WIN_ALL
+  ModuleName=GetModuleFileStr();
+#else
+  CharToWide(argv[0],ModuleName);
+#endif
+#endif
+
+#ifdef _WIN_ALL
+  SetErrorMode(SEM_NOALIGNMENTFAULTEXCEPT|SEM_FAILCRITICALERRORS|SEM_NOOPENFILEERRORBOX);
+
+
+#endif
+
+#if defined(_WIN_ALL) && !defined(SFX_MODULE)
+  // Must be initialized, normal initialization can be skipped in case of
+  // exception.
+  POWER_MODE ShutdownOnClose=POWERMODE_KEEP;
 #endif
 
   try
@@ -208,6 +220,106 @@ rc |= seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOSYS), SCMP_SYS(clone3), 0);
     ErrHandler.SetSilent(Cmd->AllYes || Cmd->MsgStream==MSG_NULL);
 
     Cmd->OutTitle();
+
+#ifdef __linux__
+    // landlock
+    struct landlock_ruleset_attr ruleset_attr = {
+      .handled_access_fs =
+        LANDLOCK_ACCESS_FS_EXECUTE |
+        LANDLOCK_ACCESS_FS_WRITE_FILE |
+        LANDLOCK_ACCESS_FS_READ_FILE |
+        LANDLOCK_ACCESS_FS_READ_DIR |
+        LANDLOCK_ACCESS_FS_REMOVE_DIR |
+        LANDLOCK_ACCESS_FS_REMOVE_FILE |
+        LANDLOCK_ACCESS_FS_MAKE_DIR |
+        LANDLOCK_ACCESS_FS_MAKE_REG |
+        LANDLOCK_ACCESS_FS_MAKE_SYM,
+    };
+
+    int ruleset_fd = syscall(SYS_landlock_create_ruleset, &ruleset_attr, sizeof(ruleset_attr), 0);
+    if (ruleset_fd == -1) {
+      fprintf(stderr, "landlock_create_ruleset failed: %s\n", strerror(errno));
+      exit(RARX_FATAL);
+    }
+
+    std::set<std::string> read_only_paths;
+    std::set<std::string> read_write_paths;
+
+    if (!Cmd->ArcName.empty()) {
+      std::string NameA;
+      WideToChar(Cmd->ArcName, NameA);
+
+      char *path_copy = strdup(NameA.c_str());
+      read_only_paths.insert(dirname(path_copy));
+      // dirname can modify the path
+      free(path_copy);
+    }
+    // multiarchive
+    Cmd->ArcNames.Rewind();
+    std::wstring NameW;
+    while (Cmd->ArcNames.GetString(NameW)) {
+      std::string NameA;
+      WideToChar(NameW, NameA);
+
+      char *path_copy = strdup(NameA.c_str());
+      read_only_paths.insert(dirname(path_copy));
+      free(path_copy);
+    }
+    Cmd->ArcNames.Rewind(); // Reset cursor
+
+    std::string out_dir = ".";
+    // Check if -op (ExtrPath) is specified, otherwise use "."
+    if (!Cmd->ExtrPath.empty()) {
+      std::string ExtrPathA;
+      WideToChar(Cmd->ExtrPath, ExtrPathA);
+      out_dir = ExtrPathA;
+    }
+    read_write_paths.insert(out_dir);
+
+    // Apply output rules (read/write)
+    for (const auto& dir : read_write_paths) {
+      //fprintf(stderr, "adding RW path \"%s\" for landlock\n", dir.c_str());
+      int fd = open(dir.c_str(), O_PATH | O_CLOEXEC);
+      if (fd >= 0) {
+        struct landlock_path_beneath_attr path_rw = {
+          .allowed_access = ruleset_attr.handled_access_fs, // Full Access
+          .parent_fd = fd
+        };
+        syscall(SYS_landlock_add_rule, ruleset_fd, LANDLOCK_RULE_PATH_BENEATH, &path_rw, 0);
+        close(fd);
+      } else {
+        fprintf(stderr, "landlock warning: Output directory '%s' must exist before running.\n", dir.c_str());
+      }
+    }
+
+    // Apply input rules (read only)
+    for (const auto& dir : read_only_paths) {
+      // Skip if this path is already covered by Read/Write rules
+      if (read_write_paths.count(dir)) continue;
+
+      int fd = open(dir.c_str(), O_PATH | O_CLOEXEC);
+      if (fd >= 0) {
+        struct landlock_path_beneath_attr path_ro = {
+          .allowed_access = LANDLOCK_ACCESS_FS_READ_FILE | LANDLOCK_ACCESS_FS_READ_DIR,
+          .parent_fd = fd
+        };
+        if (syscall(SYS_landlock_add_rule, ruleset_fd, LANDLOCK_RULE_PATH_BENEATH, &path_ro, 0) == -1) {
+          fprintf(stderr, "landlock_add_rule failed: %s\n", strerror(errno));
+          exit(RARX_FATAL);
+        }
+        close(fd);
+      }
+    }
+
+    // Enforce
+    prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
+    if (syscall(SYS_landlock_restrict_self, ruleset_fd, 0) == -1) {
+      fprintf(stderr, "landlock_restrict_self failed: %s\n", strerror(errno));
+      exit(RARX_FATAL);
+    }
+    close(ruleset_fd);
+    setup_seccomp();
+#endif
     Cmd->ProcessCommand();
   }
   catch (RAR_EXIT ErrCode)
