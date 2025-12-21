@@ -98,6 +98,7 @@ class CommandData:public RAROptions
 #ifdef RARDLL
     std::wstring DllDestName;
 #endif
+    bool ForceSync;
 };
 
 #endif
