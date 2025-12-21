@@ -107,7 +107,9 @@ static void cvt_wprintf(FILE *dest,const wchar *fmt,va_list arglist)
   DWORD Written;
   WriteConsole(hOut,s.data(),(DWORD)s.size(),&Written,NULL);
 #else
-  fputws(s.c_str(),dest);
+  std::string MsgA;
+  WideToChar(s, MsgA);
+  fwrite(MsgA.data(), 1, MsgA.size(), dest);
   // We do not use setbuf(NULL) in Unix (see comments in InitConsole).
   fflush(dest);
 #endif
