@@ -213,7 +213,7 @@ bool File::Create(const std::wstring &Name,uint Mode)
 #ifdef FILE_USE_OPEN
   std::string NameA;
   WideToChar(Name,NameA);
-  hFile=open(NameA.c_str(),(O_CREAT|O_TRUNC) | (WriteMode ? O_WRONLY : O_RDWR),0666);
+  hFile=open(NameA.c_str(),(O_CREAT|O_TRUNC) | (WriteMode ? (O_WRONLY|O_EXCL|O_NOFOLLOW|O_NOCTTY) : O_RDWR),0666);
 #else
   hFile=fopen(NameA.c_str(),WriteMode ? WRITEBINARY:CREATEBINARY);
 #endif
