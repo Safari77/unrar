@@ -274,7 +274,7 @@ void PrepareToDelete(const std::wstring &Name)
 #ifdef _UNIX
   std::string NameA;
   WideToChar(Name,NameA);
-  chmod(NameA.c_str(),S_IRUSR|S_IWUSR|S_IXUSR);
+  unlink(NameA.c_str());
 #endif
 }
 
@@ -316,8 +316,6 @@ bool SetFileAttr(const std::wstring &Name,uint Attr)
   std::string NameA;
   WideToChar(Name,NameA);
   return chmod(NameA.c_str(),(mode_t)Attr)==0;
-#else
-  return false;
 #endif
 }
 
