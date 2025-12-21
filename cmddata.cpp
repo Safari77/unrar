@@ -249,8 +249,8 @@ void CommandData::ReadConfig()
     {
       while (IsSpace(*Str))
         Str++;
-      if (wcsnicomp(Str,L"switches=",9)==0)
-        ProcessSwitchesString(Str+9);
+      if (wcsnicomp(Str,L"unrar_switches=",15)==0)
+        ProcessSwitchesString(Str+15);
       if (!Command.empty())
       {
         wchar Cmd[16];
