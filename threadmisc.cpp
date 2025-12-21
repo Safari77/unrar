@@ -115,8 +115,7 @@ uint GetNumberOfCPU()
 #else
 #ifdef _UNIX
 #ifdef _SC_NPROCESSORS_ONLN
-  uint Count=(uint)sysconf(_SC_NPROCESSORS_ONLN);
-  return Count<1 ? 1:Count;
+  return 8;
 #elif defined(_APPLE)
   uint Count;
   size_t Size=sizeof(Count);
