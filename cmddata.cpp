@@ -2,6 +2,7 @@
 
 #include "cmdfilter.cpp"
 #include "cmdmix.cpp"
+#include "cmd_security.cpp"
 
 CommandData::CommandData()
 {
@@ -297,6 +298,9 @@ void CommandData::ProcessSwitch(const wchar *Switch)
 {
 
   if (LargePageAlloc::ProcessSwitch(this,Switch))
+    return;
+
+  if (SecurityPatches::ProcessSwitch(this, Switch))
     return;
 
   switch(toupperw(Switch[0]))
