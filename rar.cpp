@@ -312,6 +312,7 @@ int main(int argc, char *argv[])
       }
     }
 
+    prctl(PR_SET_DUMPABLE, 0);
     // Enforce
     prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
     if (syscall(SYS_landlock_restrict_self, ruleset_fd, 0) == -1) {
@@ -320,6 +321,20 @@ int main(int argc, char *argv[])
     }
     close(ruleset_fd);
     setup_seccomp();
+    setenv("DBUS_SESSION_BUS_ADDRESS", "disabled:", 1);
+    setenv("DCONF_PROFILE", "/var/empty", 1);
+    unsetenv("SSH_AUTH_SOCK");
+    unsetenv("SSH_CONNECTION");
+    unsetenv("SSH_CLIENT");
+    unsetenv("GPG_AGENT_INFO");
+    unsetenv("KRB5CCNAME");
+    unsetenv("XAUTHORITY");
+    unsetenv("DISPLAY");
+    unsetenv("WAYLAND_DISPLAY");
+    unsetenv("PULSE_SERVER");
+    unsetenv("PIPEWIRE_RUNTIME_DIR");
+    unsetenv("SESSION_MANAGER");
+    unsetenv("NOTIFY_SOCKET");
 #endif
     Cmd->ProcessCommand();
   }
